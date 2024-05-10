@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Papers</title>
+</head>
+<body>
+    <h1>Review Papers</h1>
+    <% if (assignedPapers && assignedPapers.length > 0) { %>
+        <ul>
+            <% assignedPapers.forEach(function(paper) { %>
+                <li>
+                    <h2><%= paper.title %></h2>
+                    <p>Status: <%= paper.status %></p>
+                    <p>Assigned Reviewer: <%= paper.reviewer %></p>
+                    <form action="/review-papers" method="post">
+                        <input type="hidden" name="paperId" value="<%= paper.id %>">
+                        <div>
+                            <label for="score">Score:</label>
+                            <input type="number" id="score" name="score" min="0" max="10" step="0.1" required>
+                        </div>
+                        <div>
+                            <label for="feedback">Feedback:</label>
+                            <textarea id="feedback" name="feedback" required></textarea>
+                        </div>
+                        <button type="submit">Submit Review</button>
+                    </form>
+                </li>
+            <% }); %>
+        </ul>
+    <% } else { %>
+        <p>No assigned papers found.</p>
+    <% } %>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konferanslar</title>
+</head>
+<body>
+    <h1>Konferanslar</h1>
+    <ul>
+        <% conferences.forEach(conference => { %>
+            <li>
+                <h2><%= conference.title %></h2>
+                <p><%= conference.description %></p>
+                <p><strong>Mekan:</strong> <%= conference.venue %></p>
+                <p><strong>Tarih:</strong> <%= conference.date %></p>
+                <a href="/edit-conference/<%= conference.id %>">Edit</a>
+            </li>
+        <% }); %>
+    </ul>
+</body>
+</html>

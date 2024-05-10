@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Konferans Oluştur</title>
+</head>
+<body>
+    <h1>Konferans Oluştur</h1>
+    <form action="/create-conference" method="post">
+        <div>
+            <label for="title">Konferans Başlığı:</label>
+            <input type="text" id="title" name="title" required>
+        </div>
+        <div>
+            <label for="description">Açıklama:</label>
+            <textarea id="description" name="description" required></textarea>
+        </div>
+        <div>
+            <label for="venue">Mekan:</label>
+            <input type="text" id="venue" name="venue" required>
+        </div>
+        <div>
+            <label for="date">Tarih:</label>
+            <input type="date" id="date" name="date" required>
+        </div>
+        <div>
+            <label for="schedule">Program:</label>
+            <textarea id="schedule" name="schedule" required></textarea>
+        </div>
+        <button type="submit">Konferans Oluştur</button>
+    </form>
+</body>
+</html>
