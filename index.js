@@ -145,7 +145,7 @@ app.post('/login', (req, res) => {
     });
 });
 
-
+assignPapersToReviewers(); // Bildirileri hakemlere atama işlemini gerçekleştir
 
 // Ana sayfa
 app.get('/', (req, res) => {
@@ -332,6 +332,7 @@ app.post('/submit-paper', requireLogin, requireAuthor, upload.single('file'), (r
         res.send('Dosya yüklenemedi.');
     }
     assignPapersToReviewers(); // Bildirileri hakemlere atama işlemini gerçekleştir
+    
 });
 
 
@@ -475,17 +476,43 @@ function assignPapersToReviewers() {
                         } else {
                             console.log(`Kağıt (${paper.title}) hakeme (${assignedReviewer}) atandı.`);
                             // Atanan kağıdı assignedPapers dizisine ekle
-                            assignedPapers.push({ id: paperId, title: paper.title, status: paper.status, reviewer: assignedReviewer });
+                            assignedPapers.push({ paperId, title: paper.title, status: paper.status, reviewer: assignedReviewer });
+                            console.log(assignedPapers);
                         }
                     });
-                    console.log(assignedPapers);
                 }
             });
         });
     });
 }
 
-console.log(assignedPapers);
+// Assigned papers route
+app.get('/assigned-papers', (req, res) => {
+    res.render('review-papers', { assignedPapers });
+});
+
+app.get('/download/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const filePath = path.join(__dirname, 'public/uploads', filename); // Dosya yolu oluştur
+
+    // Dosyanın varlığını kontrol et
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+        if (err) {
+            // Dosya bulunamazsa 404 hatası gönder
+            res.status(404).send('Dosya bulunamadı.');
+            return;
+        }
+
+        // Dosyayı indir
+        res.download(filePath, (err) => {
+            if (err) {
+                // İndirme hatası olursa hata mesajını gönder
+                res.status(500).send('Dosya indirilirken bir hata oluştu.');
+            }
+        });
+    });
+});
+
 
 // Sunucuyu başlatma
 app.listen(port, () => {

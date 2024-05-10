@@ -14,7 +14,8 @@
                     <h2><%= paper.title %></h2>
                     <p>Status: <%= paper.status %></p>
                     <p>Assigned Reviewer: <%= paper.reviewer %></p>
-                    <form action="/review-papers" method="post">
+                    <p>Download File: <a href="/download/:filename">Download</a></p>
+                    <form action="/submit-review" method="post">
                         <input type="hidden" name="paperId" value="<%= paper.id %>">
                         <div>
                             <label for="score">Score:</label>
