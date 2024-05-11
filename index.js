@@ -1,30 +1,25 @@
 const express = require('express');
 const session = require('express-session');
-const mysql = require('mysql');
+const connection = require('./mysqlConf');
 const bodyParser = require('body-parser');
 const multer = require('multer'); // multer modülünü dahil et
 const path = require('path');
 const e = require('express');
 const exp = require('constants');
+
+const IndexModel = require('./models/indexModel');
+const IndexController = require('./controllers/indexController');
+
+const indexModel = new IndexModel();
+const indexController = new IndexController(indexModel);
+
+// Use indexController.handleRequest wherever you need to handle a request
+
+
 const app = express();
 const port = 3000;
 
-// Veritabanı bağlantısı
-const connection = mysql.createConnection({
-    host: 'localhost', // Veritabanı sunucusunun adresi
-    user: 'root',      // Veritabanı kullanıcı adı
-    password: 'password', // Veritabanı kullanıcı şifresi
-    database: 'my_conference_database' // Kullanılacak veritabanı adı
-  });
 
-// Veritabanı bağlantısını aç
-  connection.connect((err) => {
-    if (err) {
-      console.error('Veritabanına bağlanırken hata oluştu: ' + err.stack);
-      return;
-    }
-    console.log('Veritabanına başarıyla bağlandı.');
-  });
 
 // Oturum yönetimini yapılandırma
 app.use(session({
@@ -91,18 +86,7 @@ app.post('/register', (req, res) => {
             console.log('Yeni kullanıcı veritabanına eklendi.');
             userRoles[email] = role; // Kullanıcı rolünü kaydet
             
-            // Eğer kullanıcı tipi "reviewer" ise, reviewers tablosuna ekle
-            if (role === 'reviewer') {
-                const reviewerSql = `INSERT INTO reviewers (name, email, expertise) VALUES (?, ?, ?)`;
-                const reviewerValues = [username, email, expertise];
-                connection.query(reviewerSql, reviewerValues, (err, result) => {
-                    if (err) {
-                        console.error('Reviewer eklenirken bir hata oluştu: ' + err.stack);
-                    } else {
-                        console.log('Yeni reviewer veritabanına eklendi.');
-                    }
-                });
-            }
+
             res.redirect('/login');
         }
     });
@@ -513,8 +497,12 @@ app.get('/download/:filename', (req, res) => {
     });
 });
 
+module.exports =app;
+
 
 // Sunucuyu başlatma
 app.listen(port, () => {
     console.log(`Sunucu http://localhost:${port} adresinde çalışıyor`);
 });
+
+
