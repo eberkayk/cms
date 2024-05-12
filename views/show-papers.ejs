@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Show Papers</title>
+</head>
+<body>
+    <h1>Review Papers</h1>
+    <% if (papers && papers.length > 0) { %>
+        <ul>
+            <% papers.forEach((paper) => { %>
+                <li>
+                    <h2><%= paper.title %></h2>
+                    <p>Status: <%= paper.status %></p>
+                    <p>Assigned Reviewer: <%= paper.reviewer %></p>
+                    <p>Download File: <a href="/download/<%= paper.filename %>">Download</a></p>
+
+                </li>
+            <% }); %>
+        </ul>
+    <% } else { %>
+        <p>No assigned papers found.</p>
+    <% } %>
+</body>
+</html>

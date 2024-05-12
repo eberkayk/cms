@@ -51,11 +51,25 @@ connection.connect((err) => {
     expertise VARCHAR(50)
   )
 `;
+  const createReviewerPapersTable = `
+    CREATE TABLE IF NOT EXISTS reviewer_papers (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      reviewerName VARCHAR(255) NOT NULL,
+      paperId INT NOT NULL,
+      FOREIGN KEY (paperId) REFERENCES papers(id)
+    )
+  `;
+  const createReviewsTable = `
+    CREATE TABLE IF NOT EXISTS reviews (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      paper_id INT NOT NULL,
+      reviewer_id INT NOT NULL,
+      FOREIGN KEY (paper_id) REFERENCES papers(id),
+      FOREIGN KEY (reviewer_id) REFERENCES reviewers(id)
+    )
+  `;
 
-  connection.query(createUsersTable, (err, results) => {
-    if (err) throw err;
-    console.log('users table has been created.');
-  });
+
 
   connection.query(createReviewersTable, (err, results) => {
     if (err) throw err;
@@ -70,9 +84,17 @@ connection.connect((err) => {
     if (err) throw err;
     console.log('papers table has been created.');
   });
+  connection.query(createReviewsTable, (err, results) => {
+    if (err) throw err;
+    console.log('reviews table has been created.');
+  });
+
+  connection.query(createReviewerPapersTable, (err, results) => {
+    if (err) throw err;
+    console.log('reviewer_papers table has been created.');
+  });
   
 });
-
 
 
 module.exports = connection;

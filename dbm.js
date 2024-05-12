@@ -1,4 +1,16 @@
+
 const connection = require('./mysqlConf');
+
+
+
+const {
+  User,
+  Reviewer,
+  ReviewerPapers,
+  Reviews,
+  Papers,
+  Conference
+} = require('./models');
 
 class dbm {
   static addUser(user) {
@@ -135,33 +147,112 @@ class dbm {
     });
   }
 
-  static addPaper(req, values) {
-    const { title, abstract, keywords, expertise } = values;
-    const file = req.file;
-    // Dosya yükleme işlemi başarılıysa
-    if (file) {
-      // Dosya adını al
-      const filename = file.filename;
+  static addPaper(paper) {
+    const query = `
+    INSERT INTO papers (title, abstract, keywords, filename, status, expertise)
+    VALUES (?, ?, ?, ?, ?, ?)
+    `;
+    const values = [paper.title, paper.abstract, paper.keywords, paper.filename, 'submitted', paper.expertise];
+    return new Promise((resolve, reject) => {
+      connection.query(query, values, (err, result) => {
+        if (err) {
+          console.error('An error occurred while adding the paper: ' + err.stack);
+          reject(1); // Reject with 1 if there is an error.
+        } else {
+          console.log('New paper added to the database.');
+          paper.id = result.insertId; // Set the id of the paper
+          resolve(paper); // Resolve with the created paper object.
+        }
+      });
+    });
+  }
 
-      // SQL sorgusu oluştur
-      const query = `INSERT INTO papers (title, abstract, keywords, filename, status, expertise) VALUES (?, ?, ?, ?, ?, ?)`;
+  static getAllPapers(callback) {
+    const query = `
+    SELECT * FROM papers
+    `;
+    connection.query(query, (err, results) => {
+      if (err) {
+        console.error(err);
+        callback(err, null);
+      } else {
+        callback(null, results);
+      }
+    });
+  }
+  static getAllReviewers(callback) {
+    const query = `
+    SELECT * FROM reviewers
+    `;
+    connection.query(query, (err, results) => {
+      if (err) {
+        console.error(err);
+        callback(err, null);
+      } else {
+        callback(null, results);
+      }
+    });
+  }
 
-      // Parametre değerlerini ayarla
-      const values = [title, abstract, keywords, filename, 'submitted', expertise];
+  static addReviewerPaper(reviewerPaper) {
+    const query = `
+    INSERT INTO reviewer_papers (reviewer_name, paper_id)
+    VALUES (?, ?)
+    `;
+    const values = [reviewerPaper.reviewerName, reviewerPaper.paperId];
+    return new Promise((resolve, reject) => {
+      connection.query(query, values, (err, result) => {
+        if (err) {
+          console.error('An error occurred while adding the reviewer paper: ' + err.stack);
+          reject(1); // Reject with 1 if there is an error.
+        } else {
+          console.log('Reviewer paper added to the database.');
+          resolve(0); // Resolve with 0 if successful.
+        }
+      });
+    });
+  }
+  static reviewPapers(reviewerId) {
+    return new Promise((resolve, reject) => {
+      const query = `
+      SELECT papers.id, papers.title, papers.status
+      FROM papers
+      JOIN reviews ON papers.id = reviews.paper_id
+      WHERE reviews.reviewer_id = ?
+      `;
+      connection.query(query, reviewerId, (err, results) => {
+        if (err) {
+          console.error('An error occurred while fetching papers for review: ' + err.stack);
+          reject(err);
+        } else {
+          resolve(results);
+        }
+      });
+    });
+  }
 
-      // Veritabanına sorguyu gönder
+    static saveReview(review) {
+      const query = `
+      INSERT INTO reviews (reviewer_id, paper_id, score, comments)
+      VALUES (?, ?, ?, ?)
+      `;
+      const values = [review.reviewerId, review.paperId, review.score, review.comments];
       return new Promise((resolve, reject) => {
         connection.query(query, values, (err, result) => {
           if (err) {
-            console.error('Bildiri gönderilirken bir hata oluştu: ' + err.stack);
+            console.error('An error occurred while saving the review: ' + err.stack);
             reject(1); // Reject with 1 if there is an error.
           } else {
-            console.log('Yeni bildiri veritabanına eklendi.');
+            console.log('Review saved to the database.');
             resolve(0); // Resolve with 0 if successful.
           }
         });
       });
     }
-  }
+
+
+
+
+  
 }
   module.exports = dbm;
