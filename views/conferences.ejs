@@ -14,6 +14,7 @@
                 <p><%= conference.description %></p>
                 <p><strong>Mekan:</strong> <%= conference.venue %></p>
                 <p><strong>Tarih:</strong> <%= conference.date %></p>
+                <p> <strong>ID:<%= conference.id %></strong></p>
                 <a href="/edit-conference/<%= conference.id %>">Edit</a>
             </li>
         <% }); %>

@@ -1,23 +1,23 @@
 const express = require('express');
 const session = require('express-session');
-const connection = require('./mysqlConf');
+const mysql = require('mysql');
 const bodyParser = require('body-parser');
 const multer = require('multer'); // multer modülünü dahil et
 const path = require('path');
 const e = require('express');
 const exp = require('constants');
-
-const IndexModel = require('./models/indexModel');
-const IndexController = require('./controllers/indexController');
-
-const indexModel = new IndexModel();
-const indexController = new IndexController(indexModel);
-
-// Use indexController.handleRequest wherever you need to handle a request
-
-
 const app = express();
 const port = 3000;
+
+
+
+const connection = require('./mysqlConf');
+const moduleExports = require('./models');
+const User = require('./models/user');
+const dbm = require('./dbm');
+const Reviewer = require('./models/reviewer');
+const Conference = require('./models/conferance');
+
 
 
 
@@ -70,26 +70,22 @@ app.get('/register', (req, res) => {
 // Kayıt işlemi
 app.post('/register', (req, res) => {
     const { username, email, password, role, expertise } = req.body;
-    
-    // SQL sorgusu oluştur
-    const sql = `INSERT INTO users (username, email, password, role, expertise) VALUES (?, ?, ?, ?, ?)`;
-    
-    // Parametre değerlerini ayarla
-    const values = [username, email, password, role, expertise];
-    
-    // Veritabanına sorguyu gönder
-    connection.query(sql, values, (err, result) => {
-        if (err) {
-            console.error('Veritabanına kayıt eklenirken hata oluştu: ' + err.stack);
-            res.send('Kayıt sırasında bir hata oluştu.');
-        } else {
-            console.log('Yeni kullanıcı veritabanına eklendi.');
-            userRoles[email] = role; // Kullanıcı rolünü kaydet
-            
-
+    let newUser = new User(username, email, password, role, expertise);
+          
+    // Eğer kullanıcı tipi "reviewer" ise, reviewers tablosuna ekle
+    dbm.addUser(newUser)
+        .then(() => {
+            // Eğer kullanıcı tipi "reviewer" ise, reviewers tablosuna ekle
+            if (role === 'reviewer') {
+                let newReviewer = new Reviewer(username, email, expertise);
+                dbm.addReviewer(newReviewer);
+            }
             res.redirect('/login');
-        }
-    });
+        })
+        .catch((err) => {
+            console.error(err);
+            // Handle the error here
+        });
 });
 
 
@@ -102,25 +98,17 @@ app.get('/login', (req, res) => {
 
 // Kullanıcı girişi işlemi
 app.post('/login', (req, res) => {
-    const { email, password } = req.body;
-
-    // SQL sorgusu oluştur
-    const sql = `SELECT * FROM users WHERE email = ? AND password = ?`;
-
-    // Parametre değerlerini ayarla
-    const values = [email, password];
-
+    let err = 0;
+    var usr = 'A';
+    dbm.authenticateUser(req, (err, usr) =>{
     // Veritabanından kullanıcıyı sorgula
-    connection.query(sql, values, (err, results) => {
-        if (err) {
-            console.error('Kullanıcı sorgulanırken bir hata oluştu: ' + err.stack);
-            res.send('Kullanıcı sorgulanırken bir hata oluştu.');
-        } else {
-            // Sorgu sonuçları var mı kontrol et
-            if (results.length > 0) {
-                const user = results[0]; // İlk kullanıcıyı al
-                req.session.user = user; // Kullanıcı oturumunu oluştur
-                userRoles[email] = user.role; // Kullanıcı rolünü güncelle
+
+        if (!err) {
+            
+            if (usr !=='A') {
+                req.session.user = usr; // Kullanıcı oturumunu oluştur
+                console.log(usr);
+                userRoles[usr.email] = usr.role;
                 res.redirect('/'); // Anasayfaya yönlendir
             } else {
                 res.send('Geçersiz kullanıcı adı veya şifre.');
@@ -133,7 +121,8 @@ assignPapersToReviewers(); // Bildirileri hakemlere atama işlemini gerçekleşt
 
 // Ana sayfa
 app.get('/', (req, res) => {
-    const user = req.session.user; // Oturumda bulunan kullanıcı bilgisini al
+    const usr = req.session.user; // Oturumda bulunan kullanıcı bilgisini al
+    console.log(user);
     if (user) {
         res.send(`Hoş geldiniz, ${user.username}!`);
     } else {
@@ -152,26 +141,27 @@ function generateUniqueId() {
 
 // Konferans oluşturma sayfası
 app.get('/create-conference', (req, res) => {
-    const user = req.session.user; // Oturumda bulunan kullanıcı bilgisini al
-    if (user && userRoles[user.email] === 'organizer') {
+    const usr = req.session.user; // Oturumda bulunan kullanıcı bilgisini al
+    if (usr && usr.role  === 'organizer') {
         res.render('create-conference');
     } else {
         res.send('Yetkiniz yok.');
     }
 });
-
 // Konferans oluşturma işlemi
 app.post('/create-conference', (req, res) => {
     const user = req.session.user; // Oturumda bulunan kullanıcı bilgisini al
-    if (user && userRoles[user.email] === 'organizer') {
+    if (user && user.role  === 'organizer') {
         const { title, description, venue, date, schedule } = req.body;
         const id = generateUniqueId(); // Konferansa benzersiz bir kimlik oluştur
-        conferences.push({id, title, description, venue, date, schedule});
+        dbm.addConference(new Conference(title, description, venue, date, schedule));
         res.redirect('/conferences');
     } else {
         res.send('Yetkiniz yok.');
     }
 });
+
+
 
 // Kullanıcı giriş yapmadan konferans oluşturma sayfasına erişimi engelleme
 function requireLogin(req, res, next) {
@@ -184,8 +174,8 @@ function requireLogin(req, res, next) {
 
 // Kullanıcı rolünün 'organizer' olup olmadığını kontrol eden middleware
 function requireOrganizer(req, res, next) {
-    const userRole = userRoles[req.session.user.email]; // Kullanıcının rolünü al
-    if (userRole && userRole === 'organizer') {
+    const uRole = userRoles[req.session.user.email]; // Kullanıcının rolünü al
+    if (uRole && uRole === 'organizer') {
         return next();
     } else {
         res.send('Yetkiniz yok.');
@@ -196,6 +186,7 @@ function requireOrganizer(req, res, next) {
 app.get('/create-conference', requireLogin, requireOrganizer, (req, res) => {
     res.render('create-conference');
 });
+
 
 // Konferans detayları için görüntüleme
 app.get('/conference/:id', (req, res) => {
@@ -228,20 +219,26 @@ app.get('/conference/:id', (req, res) => {
 // Konferans düzenleme sayfası
 app.get('/edit-conference/:id', requireLogin, requireOrganizer, (req, res) => {
     const conferenceId = req.params.id;
-    const conference = conferences.find(conf => conf.id === conferenceId);
-    if (conference) {
-        res.render('edit-conference', { conferenceId, conference });
-    } else {
-        res.send('Konferans bulunamadı.');
-    }
+    dbm.findConference(conferenceId, (err, conference) => {
+        if (err) {
+            console.error(err);
+            res.send('Hata oluştu.');
+        } else {
+            if (conference) {
+                res.render('edit-conference', { conferenceId, conference });
+            } else {
+                res.send('Konferans bulunamadı.');
+            }
+        }
+    });
+
 });
 
 
 // Konferans düzenleme işlemi
 app.post('/edit-conference/:id', (req, res) => {
     const conferenceId = req.params.id;
-    const { title, description, venue, date, schedule } = req.body;
-    conferences[conferenceId] = { title, description, venue, date, schedule };
+    dbm.editConference(conferenceId, req.params );
     res.redirect('/conferences');
 });
 
@@ -497,12 +494,8 @@ app.get('/download/:filename', (req, res) => {
     });
 });
 
-module.exports =app;
-
 
 // Sunucuyu başlatma
 app.listen(port, () => {
     console.log(`Sunucu http://localhost:${port} adresinde çalışıyor`);
 });
-
-

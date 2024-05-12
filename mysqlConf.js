@@ -32,9 +32,25 @@ connection.connect((err) => {
 
   const createConferencesTable = `
     CREATE TABLE IF NOT EXISTS conferences (
-      id INT AUTO_INCREMENT PRIMARY KEY
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      description TEXT NOT NULL,
+      venue VARCHAR(255) NOT NULL,
+      date DATE NOT NULL,
+      schedule TEXT NOT NULL
     )
   `;
+  const createPapersTable = `
+  CREATE TABLE IF NOT EXISTS papers (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255),
+    abstract TEXT,
+    keywords VARCHAR(255),
+    filename VARCHAR(255),
+    status VARCHAR(20),
+    expertise VARCHAR(50)
+  )
+`;
 
   connection.query(createUsersTable, (err, results) => {
     if (err) throw err;
@@ -50,6 +66,13 @@ connection.connect((err) => {
     if (err) throw err;
     console.log('conferences table has been created.');
   });
+  connection.query(createPapersTable, (err, results) => {
+    if (err) throw err;
+    console.log('papers table has been created.');
+  });
+  
 });
+
+
 
 module.exports = connection;

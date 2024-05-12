@@ -1,50 +1,35 @@
-const mysql = require('connection');
-const user = require('User');
-const User = require('../models/user');
-const Reviewer = require('../models/reviewer');
+const express = require('express');
+const User = require('../models/User');
+const Reviewer = require('../models/Reviewer');
+const dbm = require('../dbm');
+
+
+
+
 // Kayıt sayfası
-app.get('/register', (req, res) => {
+function registerPage(req, res) {
     res.render('register');
-});
+}
 
-// Kayıt işlemi
-app.post('/register', (req, res) => {
+
+
+function registerHandler(req, res) {
     const { username, email, password, role, expertise } = req.body;
+    let newUser = new User(username, email, password, role, expertise);
     
-    let newUser =  new User(username, email, password, role, expertise);
-    if(createuser(user) == 0){
-        console.log('Yeni kullanıcı veritabanına eklendi.');
+    let exp =  dbm.addUser(newUser)
+    if(!exp){
+        userRoles[email] = role; // Kullanıcı rolünü kaydet
+        
+        // Eğer kullanıcı tipi "reviewer" ise, reviewers tablosuna ekle
         if (role === 'reviewer') {
-    let newUser =  new User(username, email, password, role, expertise);
-            Reviewer.createReviewer(username, email,expertise)
+            let newReviewer = new Reviewer(username, email, expertise)
+            dbm.addReviewer(newReviewer);
         }
+        res.redirect('/login');
     }
-    
-    // Veritabanına sorguyu gönder
-    connection.query(sql, values, (err, result) => {
-        if (err) {
-            console.error('Veritabanına kayıt eklenirken hata oluştu: ' + err.stack);
-            res.send('Kayıt sırasında bir hata oluştu.');
-        } else {
-            console.log('Yeni kullanıcı veritabanına eklendi.');
-            userRoles[email] = role; // Kullanıcı rolünü kaydet
-                        // Eğer kullanıcı tipi "reviewer" ise, reviewers tablosuna ekle
-                        if (role === 'reviewer') {
-                            const reviewerSql = `INSERT INTO reviewers (name, email, expertise) VALUES (?, ?, ?)`;
-                            const reviewerValues = [username, email, expertise];
-                            connection.query(reviewerSql, reviewerValues, (err, result) => {
-                                if (err) {
-                                    console.error('Reviewer eklenirken bir hata oluştu: ' + err.stack);
-                                } else {
-                                    console.log('Yeni reviewer veritabanına eklendi.');
-                                }
-                            });
-                        }
-            
-
-            res.redirect('/login');
-        }
-    });
-});
+}
 
 
+
+module.exports = registerController;
