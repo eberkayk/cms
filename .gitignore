@@ -1,4 +1,6 @@
 .pptx
+.pdf
+public/uploads/*
 
 node_modules/
 *.log
