@@ -192,22 +192,13 @@ app.get('/create-conference', requireLogin, requireOrganizer, (req, res) => {
 app.get('/conference/:id', (req, res) => {
     const conferenceId = req.params.id;
 
-    // SQL sorgusu oluştur
-    const sql = `SELECT * FROM conferences WHERE id = ?`;
-
-    // Parametre değerlerini ayarla
-    const values = [conferenceId];
-
-    // Veritabanından konferansı sorgula
-    connection.query(sql, values, (err, results) => {
+    dbm.findConference(conferenceId, (err, conference) => {
         if (err) {
-            console.error('Konferans alınırken bir hata oluştu: ' + err.stack);
-            res.send('Konferans alınırken bir hata oluştu.');
+            console.error(err);
+            res.send('Hata oluştu.');
         } else {
-            // Sonuçları kontrol et ve şablonla birlikte gönder
-            if (results.length > 0) {
-                const conference = results[0];
-                res.render('conference-details', { conference });
+            if (conference) {
+                res.render('edit-conference', { conferenceId, conference });
             } else {
                 res.send('Konferans bulunamadı.');
             }
@@ -238,17 +229,15 @@ app.get('/edit-conference/:id', requireLogin, requireOrganizer, (req, res) => {
 // Konferans düzenleme işlemi
 app.post('/edit-conference/:id', (req, res) => {
     const conferenceId = req.params.id;
-    dbm.editConference(conferenceId, req.params );
+    console.log(req.body)
+    dbm.editConference(conferenceId, req.body );
+
     res.redirect('/conferences');
 });
 
 // Konferansları veritabanından almak için
 app.get('/conferences', (req, res) => {
-    // SQL sorgusu oluştur
-    const sql = `SELECT * FROM conferences`;
-
-    // Veritabanından konferansları sorgula
-    connection.query(sql, (err, results) => {
+    dbm.getAllConferences((err, results) => {
         if (err) {
             console.error('Konferanslar alınırken bir hata oluştu: ' + err.stack);
             res.send('Konferanslar alınırken bir hata oluştu.');
@@ -258,6 +247,8 @@ app.get('/conferences', (req, res) => {
         }
     });
 });
+
+
 
 
 // Kullanıcı girişi gerektiren bir middleware
@@ -290,30 +281,18 @@ app.post('/submit-paper', requireLogin, requireAuthor, upload.single('file'), (r
     const file = req.file;
     // Dosya yükleme işlemi başarılıysa
     if (file) {
-        // Dosya adını al
         const filename = file.filename;
-
-        // SQL sorgusu oluştur
-        const sql = `INSERT INTO papers (title, abstract, keywords, filename, status, expertise) VALUES (?, ?, ?, ?, ?, ?)`;
-
-        // Parametre değerlerini ayarla
-        const values = [title, abstract, keywords, filename, 'submitted', expertise];
-
-        // Veritabanına sorguyu gönder
-        connection.query(sql, values, (err, result) => {
-            if (err) {
-                console.error('Bildiri gönderilirken bir hata oluştu: ' + err.stack);
-                res.send('Bildiri gönderilirken bir hata oluştu.');
-            } else {
-                console.log('Yeni bildiri veritabanına eklendi.');
+        dbm.addPaper(req, { title, abstract, keywords, expertise, filename })
+            .then(() => {
                 res.send('Bildiri başarıyla gönderildi.');
-            }
-        });
+                assignPapersToReviewers(); // Bildirileri hakemlere atama işlemini gerçekleştir
+            })
+            .catch(() => {
+                res.send('Bildiri gönderilirken bir hata oluştu.');
+            });
     } else {
-        res.send('Dosya yüklenemedi.');
+        res.send('Dosya yükleme işlemi başarısız.');
     }
-    assignPapersToReviewers(); // Bildirileri hakemlere atama işlemini gerçekleştir
-    
 });
 
 

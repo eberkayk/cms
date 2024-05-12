@@ -121,16 +121,47 @@ class dbm {
         });
       });
     }
-  
-  static getUsers(callback) {
+  static getAllConferences(callback) {
     const query = `
-    SELECT * FROM users
+    SELECT * FROM conferences
     `;
     connection.query(query, (err, results) => {
-    if (err) throw err;
-    callback(results);
+      if (err) {
+        console.error(err);
+        callback(err, null);
+      } else {
+        callback(null, results);
+      }
     });
   }
-  }
 
+  static addPaper(req, values) {
+    const { title, abstract, keywords, expertise } = values;
+    const file = req.file;
+    // Dosya yükleme işlemi başarılıysa
+    if (file) {
+      // Dosya adını al
+      const filename = file.filename;
+
+      // SQL sorgusu oluştur
+      const query = `INSERT INTO papers (title, abstract, keywords, filename, status, expertise) VALUES (?, ?, ?, ?, ?, ?)`;
+
+      // Parametre değerlerini ayarla
+      const values = [title, abstract, keywords, filename, 'submitted', expertise];
+
+      // Veritabanına sorguyu gönder
+      return new Promise((resolve, reject) => {
+        connection.query(query, values, (err, result) => {
+          if (err) {
+            console.error('Bildiri gönderilirken bir hata oluştu: ' + err.stack);
+            reject(1); // Reject with 1 if there is an error.
+          } else {
+            console.log('Yeni bildiri veritabanına eklendi.');
+            resolve(0); // Resolve with 0 if successful.
+          }
+        });
+      });
+    }
+  }
+}
   module.exports = dbm;
