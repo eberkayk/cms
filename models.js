@@ -26,20 +26,21 @@ class Reviewer {
 
 
 
+
+
 class ReviewerPapers {
     constructor(reviewerName, paperId) {
         this.reviewerName = reviewerName;
         this.paperId = paperId;
     }
-
 }
 
 
 class Reviews {
-    constructor(id, paperId, reviewerId) {
+    constructor(id, paperId, reviewerName) {
         this.id = id;
         this.paperId = paperId;
-        this.reviewerId = reviewerId;
+        this.reviewerName = reviewerName;
     }
 }
 

@@ -21,10 +21,10 @@ connection.connect((err) => {
     )
   `;
 
+
   const createReviewersTable = `
     CREATE TABLE IF NOT EXISTS reviewers (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      username VARCHAR(255) NOT NULL,
+      username VARCHAR(255) NOT NULL PRIMARY KEY,
       email VARCHAR(255) NOT NULL,
       expertise VARCHAR(255) NOT NULL
     )
@@ -56,6 +56,7 @@ connection.connect((err) => {
       id INT AUTO_INCREMENT PRIMARY KEY,
       reviewerName VARCHAR(255) NOT NULL,
       paperId INT NOT NULL,
+      FOREIGN KEY (reviewerName) REFERENCES reviewers(username),
       FOREIGN KEY (paperId) REFERENCES papers(id)
     )
   `;
@@ -63,35 +64,38 @@ connection.connect((err) => {
     CREATE TABLE IF NOT EXISTS reviews (
       id INT AUTO_INCREMENT PRIMARY KEY,
       paper_id INT NOT NULL,
-      reviewer_id INT NOT NULL,
+      reviewerName VARCHAR(255) NOT NULL,
       FOREIGN KEY (paper_id) REFERENCES papers(id),
-      FOREIGN KEY (reviewer_id) REFERENCES reviewers(id)
+      FOREIGN KEY (reviewerName) REFERENCES reviewers(username)
     )
   `;
 
-
+  connection.query(createUsersTable, (err, results) => {
+    if (err) throw err;
+    console.log('users table is OK');
+  });
 
   connection.query(createReviewersTable, (err, results) => {
     if (err) throw err;
-    console.log('reviewers table has been created.');
+    console.log('reviewers table is OK');
   });
 
   connection.query(createConferencesTable, (err, results) => {
     if (err) throw err;
-    console.log('conferences table has been created.');
+    console.log('conferences table is OK');
   });
   connection.query(createPapersTable, (err, results) => {
     if (err) throw err;
-    console.log('papers table has been created.');
+    console.log('papers table is OK');
   });
   connection.query(createReviewsTable, (err, results) => {
     if (err) throw err;
-    console.log('reviews table has been created.');
+    console.log('reviews table is OK');
   });
 
   connection.query(createReviewerPapersTable, (err, results) => {
     if (err) throw err;
-    console.log('reviewer_papers table has been created.');
+    console.log('reviewer_papers table is OK');
   });
   
 });

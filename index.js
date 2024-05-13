@@ -63,10 +63,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public')); // Dosya yüklemeleri için public klasörünü kullan
 app.set('view engine', 'ejs');
 
-// Ana sayfa
-app.get('/', (req, res) => {
-    res.render('index');
-});
 
 // Kayıt sayfası
 app.get('/register', (req, res) => {
@@ -123,17 +119,18 @@ app.post('/login', (req, res) => {
     });
 });
 
-assignPapersToReviewers(); // Bildirileri hakemlere atama işlemini gerçekleştir
+//assignPapersToReviewers(); // Bildirileri hakemlere atama işlemini gerçekleştir
 
 // Ana sayfa
 app.get('/', (req, res) => {
     const usr = req.session.user; // Oturumda bulunan kullanıcı bilgisini al
-    console.log(user);
-    if (user) {
-        res.send(`Hoş geldiniz, ${user.username}!`);
-    } else {
-        res.render('index');
-    }
+    console.log(usr);
+    var message = 'Lütfen giriş yapın';
+    if (usr) {
+        message  =`${usr.username}!`;
+    } 
+    res.render('index', {message});
+    
 });
 
 // Konferanslar için basit bir veritabanı simülasyonu
@@ -290,18 +287,19 @@ app.post('/submit-paper', requireLogin, requireAuthor, upload.single('file'), (r
     // Dosya yükleme işlemi başarılıysa
     if (file) {
         dbm.addPaper(newPaper)
-            .then( () => {
-                res.send('Bildiri başarıyla gönderildi.');
-                assignPapersToReviewers(); // Bildirileri hakemlere atama işlemini gerçekleştir
+            .then((paperId) => {
+            res.send('Bildiri başarıyla gönderildi.');
+            assignNewPaper(paperId); // Bildirileri hakemlere atama işlemini gerçekleştir
             })
             .catch(() => {
-                res.send('Bildiri gönderilirken bir hata oluştu.');
+            res.send('Bildiri gönderilirken bir hata oluştu.');
             });
+
     } else {
         res.send('Dosya yükleme işlemi başarısız.');
     }
 
-    assignPapersToReviewers();
+    
 });
 
 
@@ -310,8 +308,8 @@ let paperReviewAssignments = {};
 
 // Kağıtları inceleme sayfası
 app.get('/review-papers', requireLogin, requireReviewer, (req, res) => {
-    reviewerId = req.session.user.id;
-    dbm.reviewPapers(reviewerId)
+    reviewerName = req.session.user.username;
+    dbm.reviewPapers(reviewerName)
         .then((assignedPapers) => {
             res.render('review-papers', { assignedPapers });
         })
@@ -352,7 +350,7 @@ app.post('/submit-review/:id', requireLogin, requireReviewer, (req, res) => {
 
 // Bildirilere puan verme ve geri bildirim sağlama işlemi
 app.post('/review-papers', requireLogin, requireReviewer, (req, res) => {
-    const reviewerId = req.session.user.id; // Oturumdaki kullanıcının kimliğini al
+    const reviewerName = req.session.user.username; // Oturumdaki kullanıcının kimliğini al
     const { paperId, score, feedback } = req.body;
     // Puan verme ve geri bildirim sağlama işlemleri
     // ...
@@ -398,66 +396,103 @@ function assignPapersToReviewers() {
         if (err) {
             console.error('Kağıtlar alınırken bir hata oluştu: ' + err.stack);
             return;
-        }
-        
-        // Tüm hakemleri al
-        dbm.getAllReviewers((err, reviewers) => {
-            if (err) {
-                console.error('Hakemler alınırken bir hata oluştu: ' + err.stack);
-                return;
+        }       
+
+        // Her bir kağıt için uygun hakemi bul
+        papers.forEach(paper => {
+           
+            assignNewPaper(paper.paperId);
+
+
+        });
+
+
+
+    
+    });
+};
+
+function assignNewPaper(paperId){
+    dbm.getPaperById(paperId)
+        .then((paper) => {
+            const paperId = paper.id;
+            let paperExpertise = paper.expertise; // Kağıdın uzmanlık alanları
+            if (!Array.isArray(paperExpertise)) {
+                paperExpertise = [paperExpertise]; // Uzmanlık alanını diziye dönüştür
             }
-            
-            // Her bir kağıt için uygun hakemi bul
-            papers.forEach(paper => {
-                const paperId = paper.id;
-                let paperExpertise = paper.expertise; // Kağıdın uzmanlık alanları
-                if (!Array.isArray(paperExpertise)) {
-                    paperExpertise = [paperExpertise]; // Uzmanlık alanını diziye dönüştür
-                }
-                let assignedReviewer = null;
-
-                // Her bir hakemi döngüye al
-                reviewers.forEach(reviewer => {
-                    const reviewerName = reviewer.name;
-                    let reviewerExpertise = reviewer.expertise; // Hakemin uzmanlık alanları
-                    if (!Array.isArray(reviewerExpertise)) {
-                        reviewerExpertise = [reviewerExpertise]; // Uzmanlık alanını diziye dönüştür
+            dbm.getReviewersByExpertiseAsync(paperExpertise)
+                .then((reviewers) => {
+                    if (reviewers.length === 0) {
+                        console.log('Bu alanda bir hakem yok.');
+                        return 0;
                     }
+                    const randomReviewer = reviewers[Math.floor(Math.random() * reviewers.length)];
+                    const assignedReviewer = randomReviewer.username;
                     
-                    // Hakem ve kağıdın uzmanlık alanlarını karşılaştır
-                    const commonExpertise = paperExpertise.filter(area => reviewerExpertise.includes(area));
-                    
-                    // Eğer en az bir ortak uzmanlık alanı varsa, bu hakemi atanmış hakem olarak belirle
-                    if (commonExpertise.length > 0) {
-                        assignedReviewer = reviewerName;
-                        return; // En uygun hakemi bulduğumuz için döngüyü sonlandır
-                    }
-                });
-
-                if (assignedReviewer) {
                     // Kağıda hakemi atama
                     const reviewerPaper = new ReviewerPapers(assignedReviewer, paperId);
-
+                    
                     dbm.addReviewerPaper(reviewerPaper)
                         .then(() => {
-                            console.log(`Kağıt (${paper.title}) hakeme (${assignedReviewer}) atandı.`);
+                            console.log(`Kağıt (${paper.title}) hakeme (${randomReviewer.username}) atandı.`);
                             // Atanan kağıdı assignedPapers dizisine ekle
-                            assignedPapers.push({ paperId, title: paper.title, status: paper.status, reviewer: assignedReviewer });
+                            
                             console.log(assignedPapers);
                         })
                         .catch((error) => {
                             console.error('Kağıda hakem atanırken bir hata oluştu: ' + error);
                         });
-                }
-            });
+                    
+                })
+                .catch((error) => {
+                    console.error('Hakemler alınırken bir hata oluştu: ' + error);
+                });
+        })
+        .catch((error) => {
+            console.error('Kağıt alınırken bir hata oluştu: ' + error);
         });
-    });
 }
 
 // Assigned papers route
-app.get('/assigned-papers', (req, res) => {
-    res.render('review-papers', { assignedPapers });
+app.get('/assigned-papers', requireLogin, requireReviewer, (req, res) => {
+    const reviewerUserName = req.session.user.username; // Get the reviewer's ID from the session
+    dbm.getReviewerPapersByReviewerId(reviewerUserName)
+        .then((results) => {
+            if (results.length === 0) {
+                res.send('Adınıza atama yapılmamış');
+                console.log(results + 231);
+                return;
+            }
+            const promises = [];
+            for (const result of results) {
+                const promise = dbm.getPaperById(result.id)
+                    .then((paper1) => {
+                        if (paper1) {
+                            assignedPapers.push(paper1);
+                            // Do something with the assigned paper
+                        } else {
+                            console.error('Paper not found');
+                            res.send('Paper not found');
+                        }
+                    })
+                    .catch((err) => {
+                        console.error('An error occurred while retrieving the paper: ' + err);
+                        res.send('An error occurred while retrieving the paper');
+                    });
+                promises.push(promise);
+            }
+            Promise.all(promises)
+                .then(() => {
+                    res.render('review-papers', { results, assignedPapers });
+                })
+                .catch((err) => {
+                    console.error(err);
+                    res.send('An error occurred while retrieving reviewer papers.');
+                });
+        });    
 });
+
+
 
 app.get('/download/:filename', (req, res) => {
     const filename = req.params.filename;
